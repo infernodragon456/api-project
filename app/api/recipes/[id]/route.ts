@@ -2,20 +2,20 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 
-type Params = {
+interface RouteParams {
   params: {
-    id: string
-  }
+    id: string;
+  };
 }
 
 export async function GET(
-  request: NextRequest,
-  { params }: Params
+  _request: NextRequest,
+  context: RouteParams
 ) {
   try {
     const { rows } = await pool.query(
       'SELECT * FROM recipes WHERE id = $1',
-      [params.id]
+      [context.params.id]
     );
     
     if (rows.length === 0) {
@@ -33,7 +33,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: Params
+  context: RouteParams
 ) {
   try {
     const body = await request.json();
@@ -50,7 +50,7 @@ export async function PATCH(
        SET title = $1, making_time = $2, serves = $3, ingredients = $4, cost = $5
        WHERE id = $6
        RETURNING *`,
-      [body.title, body.making_time, body.serves, body.ingredients, body.cost, params.id]
+      [body.title, body.making_time, body.serves, body.ingredients, body.cost, context.params.id]
     );
 
     if (rows.length === 0) {
@@ -70,13 +70,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
-  { params }: Params
+  _request: NextRequest,
+  context: RouteParams
 ) {
   try {
     const { rows } = await pool.query(
       'DELETE FROM recipes WHERE id = $1 RETURNING id',
-      [params.id]
+      [context.params.id]
     );
     
     if (rows.length === 0) {
