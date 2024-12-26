@@ -1,48 +1,30 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import pool from '@/lib/db';
 
-// Reference to the same mock database
-let recipes = [
-  { 
-    id: 1,
-    title: "Chicken Curry",
-    making_time: "45 min",
-    serves: "4 people",
-    ingredients: "onion, chicken, seasoning",
-    cost: "1000"
-  },
-  {
-    id: 2,
-    title: "Rice Omelette",
-    making_time: "30 min",
-    serves: "2 people",
-    ingredients: "onion, egg, seasoning, soy sauce",
-    cost: "700"
-  },
-  {
-    id: 3,
-    title: "Tomato Soup",
-    making_time: "15 min",
-    serves: "5 people",
-    ingredients: "onion, tomato, seasoning, water",
-    cost: "450"
+type Params = {
+  params: {
+    id: string
   }
-];
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: Params
 ) {
   try {
-    const recipe = recipes.find(r => r.id === parseInt(params.id));
+    const { rows } = await pool.query(
+      'SELECT * FROM recipes WHERE id = $1',
+      [params.id]
+    );
     
-    if (!recipe) {
+    if (rows.length === 0) {
       return NextResponse.json({ message: "No recipe found" }, { status: 404 });
     }
     
     return NextResponse.json({
       message: "Recipe details by id",
-      recipe: [recipe]
+      recipe: [rows[0]]
     }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: "No recipe found" }, { status: 404 });
@@ -51,38 +33,33 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: Params
 ) {
   try {
     const body = await request.json();
-    const recipeIndex = recipes.findIndex(r => r.id === parseInt(params.id));
     
-    if (recipeIndex === -1) {
-      return NextResponse.json({ message: "No recipe found" }, { status: 404 });
-    }
-    
-    // Validate required fields
     if (!body.title || !body.making_time || !body.serves || !body.ingredients || !body.cost) {
       return NextResponse.json({
         message: "Recipe update failed!",
         required: "title, making_time, serves, ingredients, cost"
       }, { status: 400 });
     }
-    
-    // Update recipe
-    recipes[recipeIndex] = {
-      ...recipes[recipeIndex],
-      title: body.title,
-      making_time: body.making_time,
-      serves: body.serves,
-      ingredients: body.ingredients,
-      cost: body.cost,
-      id: recipes[recipeIndex].id // Ensure ID doesn't change
-    };
-    
+
+    const { rows } = await pool.query(
+      `UPDATE recipes 
+       SET title = $1, making_time = $2, serves = $3, ingredients = $4, cost = $5
+       WHERE id = $6
+       RETURNING *`,
+      [body.title, body.making_time, body.serves, body.ingredients, body.cost, params.id]
+    );
+
+    if (rows.length === 0) {
+      return NextResponse.json({ message: "No recipe found" }, { status: 404 });
+    }
+
     return NextResponse.json({
       message: "Recipe successfully updated!",
-      recipe: [recipes[recipeIndex]]
+      recipe: [rows[0]]
     }, { status: 200 });
   } catch (error) {
     return NextResponse.json({
@@ -94,16 +71,18 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: Params
 ) {
   try {
-    const recipeIndex = recipes.findIndex(r => r.id === parseInt(params.id));
+    const { rows } = await pool.query(
+      'DELETE FROM recipes WHERE id = $1 RETURNING id',
+      [params.id]
+    );
     
-    if (recipeIndex === -1) {
+    if (rows.length === 0) {
       return NextResponse.json({ message: "No recipe found" }, { status: 404 });
     }
     
-    recipes = recipes.filter(r => r.id !== parseInt(params.id));
     return NextResponse.json({ message: "Recipe successfully removed!" }, { status: 200 });
   } catch (error) {
     return NextResponse.json({ message: "No recipe found" }, { status: 404 });

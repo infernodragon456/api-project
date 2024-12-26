@@ -1,38 +1,13 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-
-// Mock database
-let recipes = [
-  { 
-    id: 1,
-    title: "Chicken Curry",
-    making_time: "45 min",
-    serves: "4 people",
-    ingredients: "onion, chicken, seasoning",
-    cost: "1000"
-  },
-  {
-    id: 2,
-    title: "Rice Omelette",
-    making_time: "30 min",
-    serves: "2 people",
-    ingredients: "onion, egg, seasoning, soy sauce",
-    cost: "700"
-  },
-  {
-    id: 3,
-    title: "Tomato Soup",
-    making_time: "15 min",
-    serves: "5 people",
-    ingredients: "onion, tomato, seasoning, water",
-    cost: "450"
-  }
-];
+import pool from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json({ recipes }, { status: 200 });
+    const { rows } = await pool.query('SELECT * FROM recipes');
+    return NextResponse.json({ recipes: rows }, { status: 200 });
   } catch (error) {
+    console.error('Database error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -49,24 +24,19 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
-    const newRecipe = {
-      id: recipes.length + 1,
-      title: body.title,
-      making_time: body.making_time,
-      serves: body.serves,
-      ingredients: body.ingredients,
-      cost: body.cost,
-      created_at: timestamp,
-      updated_at: timestamp
-    };
+    const { rows } = await pool.query(
+      `INSERT INTO recipes (title, making_time, serves, ingredients, cost)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [body.title, body.making_time, body.serves, body.ingredients, body.cost]
+    );
 
-    recipes.push(newRecipe);
     return NextResponse.json({
       message: "Recipe successfully created!",
-      recipe: [newRecipe]
+      recipe: [rows[0]]
     }, { status: 200 });
   } catch (error) {
+    console.error('Database error:', error);
     return NextResponse.json({
       message: "Recipe creation failed!",
       required: "title, making_time, serves, ingredients, cost"
