@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 // Mock database
 let recipes = [
@@ -28,7 +29,7 @@ let recipes = [
   }
 ];
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({ recipes }, { status: 200 });
   } catch (error) {
@@ -36,7 +37,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
