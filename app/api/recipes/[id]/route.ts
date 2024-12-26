@@ -2,20 +2,15 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import pool from '@/lib/db';
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 export async function GET(
-  _request: NextRequest,
-  context: RouteParams
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   try {
+    const { id } = await params;
     const { rows } = await pool.query(
       'SELECT * FROM recipes WHERE id = $1',
-      [context.params.id]
+      [id]
     );
     
     if (rows.length === 0) {
@@ -33,9 +28,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  context: RouteParams
-) {
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   try {
+    const { id } = await params;
     const body = await request.json();
     
     if (!body.title || !body.making_time || !body.serves || !body.ingredients || !body.cost) {
@@ -50,7 +46,7 @@ export async function PATCH(
        SET title = $1, making_time = $2, serves = $3, ingredients = $4, cost = $5
        WHERE id = $6
        RETURNING *`,
-      [body.title, body.making_time, body.serves, body.ingredients, body.cost, context.params.id]
+      [body.title, body.making_time, body.serves, body.ingredients, body.cost, id]
     );
 
     if (rows.length === 0) {
@@ -70,13 +66,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
-  context: RouteParams
-) {
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   try {
+    const { id } = await params;
     const { rows } = await pool.query(
       'DELETE FROM recipes WHERE id = $1 RETURNING id',
-      [context.params.id]
+      [id]
     );
     
     if (rows.length === 0) {
